@@ -1,0 +1,122 @@
+/* AI Review Button and Container Styles */
+
+#ai-review-button {
+  background-color: #238636;
+  color: #ffffff;
+  border: 1px solid rgba(27, 31, 36, 0.15);
+  border-radius: 6px;
+  padding: 5px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  cursor: pointer;
+  transition:
+    background-color 0.2s,
+    border-color 0.2s;
+}
+
+#ai-review-button:hover:not(:disabled) {
+  background-color: #2ea043;
+  border-color: rgba(27, 31, 36, 0.15);
+}
+
+#ai-review-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+#ai-review-container {
+  border-radius: 6px;
+  margin: 16px 0;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+#ai-review-container .flash {
+  border-radius: 6px;
+}
+
+#ai-review-container h3 {
+  display: flex;
+  align-items: center;
+  color: #1f2328;
+}
+
+#ai-review-container p {
+  color: #656d76;
+  line-height: 1.5;
+  margin: 0;
+}
+
+#ai-review-container strong {
+  color: #1f2328;
+  font-weight: 600;
+}
+
+.btn-octicon {
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  color: #656d76;
+  transition: background-color 0.2s;
+}
+
+.btn-octicon:hover {
+  background-color: rgba(175, 184, 193, 0.2);
+  color: #1f2328;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  #ai-review-button {
+    background-color: #238636;
+    border-color: rgba(240, 246, 252, 0.1);
+  }
+
+  #ai-review-button:hover:not(:disabled) {
+    background-color: #2ea043;
+  }
+
+  #ai-review-container {
+    background-color: #161b22 !important;
+    border-color: #30363d !important;
+  }
+
+  #ai-review-container h3 {
+    color: #e6edf3;
+  }
+
+  #ai-review-container p {
+    color: #8b949e;
+  }
+
+  #ai-review-container strong {
+    color: #e6edf3;
+  }
+
+  #ai-review-container .flash {
+    background-color: #0d1117;
+    border-color: #30363d;
+  }
+
+  .btn-octicon {
+    color: #8b949e;
+  }
+
+  .btn-octicon:hover {
+    background-color: rgba(110, 118, 129, 0.2);
+    color: #e6edf3;
+  }
+}

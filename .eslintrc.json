@@ -1,0 +1,85 @@
+{
+  "env": {
+    "browser": true,
+    "es2021": true,
+    "webextensions": true
+  },
+  "extends": ["eslint:recommended"],
+  "parserOptions": {
+    "ecmaVersion": 2022,
+    "sourceType": "script"
+  },
+  "globals": {
+    "chrome": "readonly",
+    "CONFIG": "writable",
+    "helpers": "writable",
+    "settingsService": "writable",
+    "cacheService": "writable",
+    "apiService": "writable",
+    "prService": "writable",
+    "domService": "writable",
+    "secureStorage": "writable"
+  },
+  "rules": {
+    "no-console": "off",
+    "no-unused-vars": [
+      "warn",
+      {
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_"
+      }
+    ],
+    "no-undef": "error",
+    "no-var": "error",
+    "prefer-const": "warn",
+    "prefer-arrow-callback": "warn",
+    "prefer-template": "warn",
+    "quotes": ["warn", "double", { "avoidEscape": true }],
+    "semi": ["warn", "always"],
+    "eqeqeq": ["error", "always"],
+    "curly": ["warn", "all"],
+    "brace-style": ["warn", "1tbs"],
+    "comma-dangle": ["warn", "always-multiline"],
+    "no-trailing-spaces": "warn",
+    "no-multiple-empty-lines": ["warn", { "max": 2 }],
+    "space-before-function-paren": [
+      "warn",
+      {
+        "anonymous": "always",
+        "named": "never",
+        "asyncArrow": "always"
+      }
+    ],
+    "keyword-spacing": "warn",
+    "space-infix-ops": "warn",
+    "indent": ["warn", 2, { "SwitchCase": 1 }],
+    "max-len": [
+      "warn",
+      {
+        "code": 100,
+        "ignoreStrings": true,
+        "ignoreTemplateLiterals": true,
+        "ignoreComments": true,
+        "ignoreUrls": true
+      }
+    ],
+    "object-curly-spacing": ["warn", "always"],
+    "array-bracket-spacing": ["warn", "never"],
+    "arrow-spacing": "warn",
+    "no-multi-spaces": "warn"
+  },
+  "overrides": [
+    {
+      "files": ["*.mjs", "*.module.js"],
+      "parserOptions": {
+        "sourceType": "module"
+      }
+    },
+    {
+      "files": ["scripts/background.js"],
+      "parserOptions": {
+        "sourceType": "module"
+      }
+    }
+  ]
+}

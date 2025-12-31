@@ -1,0 +1,35 @@
+{
+  "name": "github-pr-ai-reviewer",
+  "version": "2.0.0",
+  "description": "Chrome extension for AI-powered GitHub Pull Request reviews using OpenRouter",
+  "scripts": {
+    "build:extension": "echo 'Extension is ready to load - no build needed'",
+    "lint": "eslint extension/scripts/**/*.js extension/popup/*.js",
+    "lint:fix": "eslint --fix extension/scripts/**/*.js extension/popup/*.js",
+    "format": "prettier --write \"extension/**/*.{js,json,css,html}\"",
+    "format:check": "prettier --check \"extension/**/*.{js,json,css,html}\"",
+    "validate": "npm run lint && npm run format:check",
+    "test": "echo 'No tests configured yet' && exit 0",
+    "zip": "npm run validate && cd extension && zip -r ../extension.zip . -x '*.DS_Store' && cd ..",
+    "clean": "rm -f extension.zip"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.0",
+    "prettier": "^3.2.5"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:viktor-svirsky/gitHub-pr-ai-reviewer.git"
+  },
+  "keywords": [
+    "github",
+    "pull-request",
+    "code-review",
+    "ai",
+    "chrome-extension",
+    "openrouter",
+    "llm"
+  ],
+  "author": "",
+  "license": "MIT"
+}
