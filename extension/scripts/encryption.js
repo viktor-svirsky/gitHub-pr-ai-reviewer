@@ -5,16 +5,65 @@
 
 class SecureStorage {
   constructor() {
-    this.SALT = "github-pr-ai-reviewer-v1-salt-2024";
-    this.ITERATIONS = 100000;
-    this.masterKeyCache = null;
+    this.SALT_KEY = "encryptionSalt";
+    this.ITERATIONS = 600000;
+    this.keyCache = null;
   }
 
   /**
-   * Derive encryption key from master password
+   * Get or initialize the encryption salt
+   * 
+   * Note: The salt is stored in chrome.storage.local to persist across browser sessions.
+   * While accessible to the extension context, it is public non-secret data used to
+   * prevent rainbow table attacks. The security relies on the master password entropy
+   * and the high PBKDF2 iteration count (600,000).
+   */
+  async getOrInitSalt() {
+    const result = await chrome.storage.local.get([this.SALT_KEY]);
+    if (result[this.SALT_KEY]) {
+      return result[this.SALT_KEY];
+    }
+
+    // Check for existing encrypted data to determine if we are in a broken state
+    const allData = await chrome.storage.local.get(null);
+    const hasEncryptedData = Object.values(allData).some((val) => val && val.encrypted);
+
+    let salt;
+    if (hasEncryptedData) {
+      // CRITICAL: We found encrypted data but no salt. This implies a corrupted state 
+      // or an unauthorized modification. We cannot safely decrypt without the correct salt.
+      // We throw an error to prevent data loss or security issues. User may need to reset.
+      console.error("Encrypted data found but salt is missing.");
+      throw new Error("Security Error: Encryption salt missing for existing data. Reset required.");
+    } else {
+      // Generate new random salt using cryptographically secure random values
+      const randomValues = new Uint8Array(16);
+      crypto.getRandomValues(randomValues);
+      // Store as array for JSON compatibility
+      salt = Array.from(randomValues);
+    }
+
+    await chrome.storage.local.set({ [this.SALT_KEY]: salt });
+    return salt;
+  }
+
+  /**
+   * Derive encryption key from master password using PBKDF2
+   * @param {string} password - The master password
+   * @returns {Promise<CryptoKey>} The derived AES-GCM key
    */
   async deriveKey(password) {
+    if (this.keyCache && !password) {
+      return this.keyCache;
+    }
+
+    const saltData = await this.getOrInitSalt();
     const enc = new TextEncoder();
+
+    // Handle both legacy string salt and new byte array salt
+    const saltBuffer =
+      typeof saltData === "string" ? enc.encode(saltData) : new Uint8Array(saltData);
+
     const keyMaterial = await crypto.subtle.importKey(
       "raw",
       enc.encode(password),
@@ -23,10 +72,10 @@ class SecureStorage {
       ["deriveBits", "deriveKey"]
     );
 
-    return crypto.subtle.deriveKey(
+    const key = await crypto.subtle.deriveKey(
       {
         name: "PBKDF2",
-        salt: enc.encode(this.SALT),
+        salt: saltBuffer,
         iterations: this.ITERATIONS,
         hash: "SHA-256",
       },
@@ -35,10 +84,23 @@ class SecureStorage {
       false,
       ["encrypt", "decrypt"]
     );
+
+    this.keyCache = key;
+    return key;
   }
 
   /**
-   * Encrypt text with given key
+   * Clear the in-memory key cache
+   */
+  clearKeyCache() {
+    this.keyCache = null;
+  }
+
+  /**
+   * Encrypt text with given key using AES-GCM
+   * @param {string} text - The plaintext to encrypt
+   * @param {CryptoKey} key - The encryption key
+   * @returns {Promise<{iv: number[], data: number[], version: number}|null>} Object containing IV, encrypted data, and version
    */
   async encrypt(text, key) {
     if (!text) return null;
@@ -51,15 +113,25 @@ class SecureStorage {
     return {
       iv: Array.from(iv),
       data: Array.from(new Uint8Array(encrypted)),
+      version: 1, // Current encryption version
     };
   }
 
   /**
    * Decrypt encrypted object with given key
+   * @param {{iv: number[], data: number[], version: number}} encrypted - The encrypted object
+   * @param {CryptoKey} key - The decryption key
+   * @returns {Promise<string|null>} The decrypted plaintext
+   * @throws {Error} If decryption fails (invalid password or data)
    */
   async decrypt(encrypted, key) {
     if (!encrypted || !encrypted.iv || !encrypted.data) {
       return null;
+    }
+
+    // Check version if necessary (currently only version 1 supported)
+    if (encrypted.version && encrypted.version > 1) {
+      console.warn("Unsupported encryption version:", encrypted.version);
     }
 
     const dec = new TextDecoder();
@@ -80,6 +152,9 @@ class SecureStorage {
 
   /**
    * Save encrypted value to chrome.storage.local
+   * @param {string} keyName - The storage key
+   * @param {string} value - The value to encrypt and store
+   * @param {string} masterPassword - The master password
    */
   async saveSecure(keyName, value, masterPassword) {
     if (!value) {
@@ -101,6 +176,9 @@ class SecureStorage {
 
   /**
    * Get and decrypt value from chrome.storage.local
+   * @param {string} keyName - The storage key
+   * @param {string} masterPassword - The master password
+   * @returns {Promise<string|null>} The decrypted value or null
    */
   async getSecure(keyName, masterPassword) {
     const result = await chrome.storage.local.get([keyName]);
@@ -150,7 +228,7 @@ class SecureStorage {
     await chrome.storage.local.set({
       encryptionEnabled: false,
     });
-    this.masterKeyCache = null;
+    this.keyCache = null;
   }
 
   /**
@@ -206,7 +284,7 @@ class SecureStorage {
    */
   async clearAll() {
     await chrome.storage.local.clear();
-    this.masterKeyCache = null;
+    this.keyCache = null;
   }
 }
 

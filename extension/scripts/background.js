@@ -1,10 +1,26 @@
 // Background service worker for GitHub PR AI Reviewer
 
+// Import dependencies
+import "./utils/constants.js";
+import "./utils/helpers.js";
+import "./services/settings-service.js";
+import "./services/api-service.js";
+
 console.log("GitHub PR AI Reviewer background service worker loaded");
 
 // Handle installation
 chrome.runtime.onInstalled.addListener((details) => {
   console.log("Extension installed:", details.reason);
+
+  if (!chrome.storage.session) {
+    console.warn("⚠️ chrome.storage.session is not available. Encrypted mode may not function correctly in background.");
+  } else {
+    // Security: Ensure session storage is only accessible in trusted contexts (background/popup)
+    // and not content scripts.
+    chrome.storage.session.setAccessLevel({ accessLevel: "TRUSTED_CONTEXTS" }).catch(err => {
+      console.warn("Failed to set session access level:", err);
+    });
+  }
 
   if (details.reason === "install") {
     // Set default values on first install
@@ -25,13 +41,17 @@ chrome.runtime.onInstalled.addListener((details) => {
 
 // Handle messages from content scripts
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  console.log("Message received:", request);
+  console.log("Message received:", request.action);
 
   if (request.action === "getSettings") {
     chrome.storage.local.get(
       ["openrouterApiKey", "aiModel", "githubToken", "autoReview", "reviewDepth"],
       (settings) => {
-        sendResponse({ success: true, settings });
+        if (chrome.runtime.lastError) {
+          sendResponse({ success: false, error: chrome.runtime.lastError.message });
+        } else {
+          sendResponse({ success: true, settings });
+        }
       }
     );
     return true; // Keep channel open for async response
@@ -39,7 +59,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
   if (request.action === "saveSettings") {
     chrome.storage.local.set(request.settings, () => {
-      sendResponse({ success: true });
+      if (chrome.runtime.lastError) {
+        sendResponse({ success: false, error: chrome.runtime.lastError.message });
+      } else {
+        sendResponse({ success: true });
+      }
     });
     return true;
   }
@@ -52,17 +76,96 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
   }
 
+  if (request.action === "generateReview") {
+    console.log("🚀 Generating review via background worker...");
+    const { prInfo } = request.data;
+
+    (async () => {
+      try {
+        // 1. Fetch GitHub Data
+        const [diff, files] = await Promise.all([fetchPRDiff(prInfo), fetchPRFiles(prInfo)]);
+
+        // 2. Get AI Review
+        const review = await apiService.getReview(prInfo, diff, files);
+
+        console.log("✅ Review generated successfully");
+        sendResponse({ success: true, review });
+      } catch (error) {
+        console.error("❌ Review generation failed:", error);
+        // Check for encryption lock error
+        if (error.message === "ENCRYPTION_LOCKED" || error.message.includes("ENCRYPTION_LOCKED")) {
+          sendResponse({ success: false, error: "ENCRYPTION_LOCKED", code: "auth_required" });
+        } else {
+          sendResponse({ success: false, error: error.message });
+        }
+      }
+    })();
+    return true;
+  }
+
   if (request.action === "triggerReview") {
     // Handle trigger review action from browser action
     sendResponse({ success: true });
     return false;
   }
 
-  // Unknown action - send response to prevent channel error
+  // Unknown action
   console.warn("Unknown action:", request.action);
   sendResponse({ success: false, error: "Unknown action" });
   return false;
 });
+
+// GitHub API Helpers
+async function fetchPRDiff(prInfo) {
+  const { owner, repo, prNumber } = prInfo;
+  console.log(`📥 Fetching PR diff for ${owner}/${repo}#${prNumber}...`);
+
+  const githubToken = await settingsService.getApiKey("githubToken");
+
+  const headers = {
+    Accept: "application/vnd.github.v3.diff",
+  };
+
+  if (githubToken) {
+    headers["Authorization"] = `Bearer ${githubToken}`;
+  }
+
+  const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}`, {
+    headers,
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch PR diff: ${response.statusText}`);
+  }
+
+  return await response.text();
+}
+
+async function fetchPRFiles(prInfo) {
+  const { owner, repo, prNumber } = prInfo;
+  console.log(`📁 Fetching PR files for ${owner}/${repo}#${prNumber}...`);
+
+  const githubToken = await settingsService.getApiKey("githubToken");
+
+  const headers = {
+    Accept: "application/vnd.github.v3+json",
+  };
+
+  if (githubToken) {
+    headers["Authorization"] = `Bearer ${githubToken}`;
+  }
+
+  const response = await fetch(
+    `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/files`,
+    { headers }
+  );
+
+  if (!response.ok) {
+    throw new Error(`GitHub API error: ${response.status} ${response.statusText}`);
+  }
+
+  return await response.json();
+}
 
 // Handle API requests
 async function handleAPIRequest(url, options) {
@@ -117,10 +220,47 @@ chrome.action.onClicked.addListener((tab) => {
 
 // Periodic cleanup or maintenance tasks
 chrome.alarms.create("cleanup", { periodInMinutes: 60 });
+// Security: Check for session timeout every 5 minutes
+chrome.alarms.create("sessionCheck", { periodInMinutes: 5 });
+
+// Security: Clear session storage when the background worker is suspended
+chrome.runtime.onSuspend.addListener(() => {
+  if (chrome.storage.session) {
+    chrome.storage.session.clear();
+  }
+});
 
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === "cleanup") {
     console.log("Running periodic cleanup");
     // Could clean up old cached reviews, etc.
   }
+  
+  if (alarm.name === "sessionCheck") {
+    checkSessionTimeout();
+  }
 });
+
+async function checkSessionTimeout() {
+  try {
+    if (chrome.storage.session) {
+      const data = await chrome.storage.session.get(["lastActivity", "decrypted_openrouterApiKey"]);
+      if (data.decrypted_openrouterApiKey) {
+        const lastActivity = data.lastActivity || 0;
+        const now = Date.now();
+        const timeout = 30 * 60 * 1000; // 30 minutes
+        
+        if (now - lastActivity > timeout) {
+          // Clears decrypted keys from session
+          await chrome.storage.session.remove([
+            "decrypted_openrouterApiKey", 
+            "decrypted_githubToken",
+            "lastActivity"
+          ]);
+        }
+      }
+    }
+  } catch (err) {
+    console.error("Session check failed", err);
+  }
+}

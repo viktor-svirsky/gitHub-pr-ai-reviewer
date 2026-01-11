@@ -365,6 +365,10 @@ if (typeof window !== "undefined") {
   window.apiService = apiService;
   window.APIService = APIService;
 }
+if (typeof self !== "undefined") {
+  self.apiService = apiService;
+  self.APIService = APIService;
+}
 
 // CommonJS export for Node.js/Jest testing
 if (typeof module !== "undefined" && module.exports) {

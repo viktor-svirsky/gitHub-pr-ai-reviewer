@@ -16,9 +16,9 @@ describe("SecureStorage", () => {
 
   describe("constructor", () => {
     it("should initialize with correct defaults", () => {
-      expect(storage.SALT).toBeDefined();
-      expect(storage.ITERATIONS).toBe(100000);
-      expect(storage.masterKeyCache).toBe(null);
+      expect(storage.SALT_KEY).toBe("encryptionSalt");
+      expect(storage.ITERATIONS).toBe(600000);
+      expect(storage.keyCache).toBe(null);
     });
   });
 
@@ -58,7 +58,7 @@ describe("SecureStorage", () => {
       expect(crypto.subtle.deriveKey).toHaveBeenCalledWith(
         expect.objectContaining({
           name: "PBKDF2",
-          iterations: 100000,
+          iterations: 600000,
           hash: "SHA-256",
         }),
         expect.any(Object),
@@ -328,10 +328,10 @@ describe("SecureStorage", () => {
     });
 
     it("should clear master key cache", async () => {
-      storage.masterKeyCache = { test: "data" };
+      storage.keyCache = { test: "data" };
       await storage.disableEncryption();
 
-      expect(storage.masterKeyCache).toBe(null);
+      expect(storage.keyCache).toBe(null);
     });
 
     it("should work when encryption is not enabled", async () => {
@@ -450,11 +450,11 @@ describe("SecureStorage", () => {
     });
 
     it("should clear master key cache", async () => {
-      storage.masterKeyCache = { test: "data" };
+      storage.keyCache = { test: "data" };
 
       await storage.clearAll();
 
-      expect(storage.masterKeyCache).toBe(null);
+      expect(storage.keyCache).toBe(null);
     });
 
     it("should handle empty storage", async () => {

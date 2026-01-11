@@ -80,16 +80,45 @@ class SettingsService {
    * @returns {Promise<string|null>} API key or null
    */
   async getApiKey(keyName) {
+    // 1. Try to get from session storage (decrypted) first
+    // Only available in background/popup context
+    if (chrome.storage.session) {
+      try {
+        const sessionKey = `decrypted_${keyName}`;
+        const sessionData = await chrome.storage.session.get([sessionKey]);
+        if (sessionData[sessionKey]) {
+          console.log(`🔑 Retrieved ${keyName} from session storage`);
+          // Refresh session activity
+          chrome.storage.session.set({ lastActivity: Date.now() });
+          return sessionData[sessionKey];
+        }
+      } catch (error) {
+        console.warn("Failed to access session storage:", error);
+      }
+    }
+
+    // 2. Fallback to local storage
     const settings = await this.get([keyName, "encryptionEnabled"], false);
     const apiKey = settings[keyName];
 
-    // Check if encryption is enabled
+    // Check consistency
+    const isKeyEncrypted = apiKey && typeof apiKey === "object" && apiKey.encrypted;
+
+    // Case 1: Encryption enabled in settings
     if (settings.encryptionEnabled) {
-      // If key is encrypted (object with iv and data), we can't decrypt in content script
-      if (apiKey && typeof apiKey === "object" && apiKey.encrypted) {
-        console.warn("⚠️ API key is encrypted - cannot decrypt in content script");
-        throw new Error(CONFIG.MESSAGES.ERROR_ENCRYPTION_ENABLED);
+      if (isKeyEncrypted) {
+        console.warn(`⚠️ ${keyName} is encrypted - waiting for unlock via popup`);
+        throw new Error("ENCRYPTION_LOCKED");
       }
+      // If enabled but key is plain text, we return it (fallback/transition)
+      // or we could warn. For now, we allow it but it's technically a security risk
+      // if user thinks it is encrypted.
+    }
+
+    // Case 2: Encryption disabled but key is encrypted (Inconsistent state)
+    if (!settings.encryptionEnabled && isKeyEncrypted) {
+      console.error(`❌ Consistency Error: Encryption disabled but ${keyName} is encrypted`);
+      throw new Error("ENCRYPTION_STATE_MISMATCH");
     }
 
     return apiKey || null;
@@ -195,6 +224,10 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
 if (typeof window !== "undefined") {
   window.settingsService = settingsService;
   window.SettingsService = SettingsService;
+}
+if (typeof self !== "undefined") {
+  self.settingsService = settingsService;
+  self.SettingsService = SettingsService;
 }
 
 // CommonJS export for Node.js/Jest testing
