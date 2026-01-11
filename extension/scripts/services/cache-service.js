@@ -266,4 +266,10 @@ const cacheService = new CacheService();
 // Make available globally
 if (typeof window !== "undefined") {
   window.cacheService = cacheService;
+  window.CacheService = CacheService;
+}
+
+// CommonJS export for Node.js/Jest testing
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = { CacheService, cacheService };
 }

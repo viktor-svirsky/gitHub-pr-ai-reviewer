@@ -43,7 +43,7 @@ class APIService {
           return await this.makeRequest(openrouterApiKey, model, prompt, signal);
         },
         this.maxRetries,
-        this.retryDelay
+        this.retryDelay,
       );
 
       console.log("📡 OpenRouter response received");
@@ -156,7 +156,7 @@ class APIService {
     const truncatedDiff = helpers.truncateText(
       diff,
       CONFIG.MAX_DIFF_LENGTH,
-      "\n\n[... diff truncated ...]"
+      "\n\n[... diff truncated ...]",
     );
 
     return `
@@ -244,7 +244,7 @@ Format your response as JSON with this structure:
 
     // Try to extract summary from first paragraph or section
     const summaryMatch = reviewText.match(
-      /(?:summary|overview|assessment)[:\s]*(.*?)(?:\n\n|##|$)/is
+      /(?:summary|overview|assessment)[:\s]*(.*?)(?:\n\n|##|$)/is,
     );
     if (summaryMatch) {
       summary = summaryMatch[1].trim();
@@ -363,4 +363,10 @@ const apiService = new APIService();
 // Make available globally
 if (typeof window !== "undefined") {
   window.apiService = apiService;
+  window.APIService = APIService;
+}
+
+// CommonJS export for Node.js/Jest testing
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = { APIService, apiService };
 }

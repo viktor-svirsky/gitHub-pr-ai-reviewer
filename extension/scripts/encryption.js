@@ -216,4 +216,10 @@ const secureStorage = new SecureStorage();
 // Make available globally for content scripts
 if (typeof window !== "undefined") {
   window.secureStorage = secureStorage;
+  window.SecureStorage = SecureStorage;
+}
+
+// CommonJS export for Node.js/Jest testing
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = { SecureStorage, secureStorage };
 }
