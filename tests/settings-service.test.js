@@ -266,9 +266,7 @@ describe("SettingsService", () => {
         encryptionEnabled: true,
       });
 
-      await expect(service.getApiKey("openrouterApiKey")).rejects.toThrow(
-        CONFIG.MESSAGES.ERROR_ENCRYPTION_ENABLED
-      );
+      await expect(service.getApiKey("openrouterApiKey")).rejects.toThrow("ENCRYPTION_LOCKED");
     });
 
     it("should handle plain text key when encryption is enabled but key is not encrypted", async () => {

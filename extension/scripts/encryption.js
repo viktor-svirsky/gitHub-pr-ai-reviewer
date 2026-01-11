@@ -5,16 +5,52 @@
 
 class SecureStorage {
   constructor() {
-    this.SALT = "github-pr-ai-reviewer-v1-salt-2024";
+    this.LEGACY_SALT = "github-pr-ai-reviewer-v1-salt-2024";
+    this.SALT_KEY = "encryptionSalt";
     this.ITERATIONS = 100000;
     this.masterKeyCache = null;
+  }
+
+  /**
+   * Get or initialize the encryption salt
+   */
+  async getOrInitSalt() {
+    const result = await chrome.storage.local.get([this.SALT_KEY]);
+    if (result[this.SALT_KEY]) {
+      return result[this.SALT_KEY];
+    }
+
+    // Check for existing encrypted data to determine if we need legacy salt
+    const allData = await chrome.storage.local.get(null);
+    const hasEncryptedData = Object.values(allData).some((val) => val && val.encrypted);
+
+    let salt;
+    if (hasEncryptedData) {
+      // Use legacy salt for backward compatibility
+      salt = this.LEGACY_SALT;
+    } else {
+      // Generate new random salt
+      const randomValues = new Uint8Array(16);
+      crypto.getRandomValues(randomValues);
+      // Store as array for JSON compatibility
+      salt = Array.from(randomValues);
+    }
+
+    await chrome.storage.local.set({ [this.SALT_KEY]: salt });
+    return salt;
   }
 
   /**
    * Derive encryption key from master password
    */
   async deriveKey(password) {
+    const saltData = await this.getOrInitSalt();
     const enc = new TextEncoder();
+
+    // Handle both legacy string salt and new byte array salt
+    const saltBuffer =
+      typeof saltData === "string" ? enc.encode(saltData) : new Uint8Array(saltData);
+
     const keyMaterial = await crypto.subtle.importKey(
       "raw",
       enc.encode(password),
@@ -26,7 +62,7 @@ class SecureStorage {
     return crypto.subtle.deriveKey(
       {
         name: "PBKDF2",
-        salt: enc.encode(this.SALT),
+        salt: saltBuffer,
         iterations: this.ITERATIONS,
         hash: "SHA-256",
       },

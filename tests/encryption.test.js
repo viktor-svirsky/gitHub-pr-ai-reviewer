@@ -16,7 +16,8 @@ describe("SecureStorage", () => {
 
   describe("constructor", () => {
     it("should initialize with correct defaults", () => {
-      expect(storage.SALT).toBeDefined();
+      expect(storage.LEGACY_SALT).toBeDefined();
+      expect(storage.SALT_KEY).toBe("encryptionSalt");
       expect(storage.ITERATIONS).toBe(100000);
       expect(storage.masterKeyCache).toBe(null);
     });

@@ -41,9 +41,15 @@ function throttle(func, limit) {
  * @returns {string} Escaped text
  */
 function escapeHtml(text) {
-  const div = document.createElement("div");
-  div.textContent = text;
-  return div.innerHTML;
+  if (!text) {
+    return text;
+  }
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
 /**
@@ -230,7 +236,11 @@ const helpers = {
 
 // Make utilities available globally
 if (typeof window !== "undefined") {
+  // eslint-disable-next-line no-redeclare
   window.helpers = helpers;
+}
+if (typeof self !== "undefined") {
+  self.helpers = helpers;
 }
 
 // CommonJS export for Node.js/Jest testing

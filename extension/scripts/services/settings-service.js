@@ -80,15 +80,32 @@ class SettingsService {
    * @returns {Promise<string|null>} API key or null
    */
   async getApiKey(keyName) {
+    // 1. Try to get from session storage (decrypted) first
+    // Only available in background/popup context
+    if (chrome.storage.session) {
+      try {
+        const sessionKey = `decrypted_${keyName}`;
+        const sessionData = await chrome.storage.session.get([sessionKey]);
+        if (sessionData[sessionKey]) {
+          console.log(`🔑 Retrieved ${keyName} from session storage`);
+          return sessionData[sessionKey];
+        }
+      } catch (error) {
+        console.warn("Failed to access session storage:", error);
+      }
+    }
+
+    // 2. Fallback to local storage
     const settings = await this.get([keyName, "encryptionEnabled"], false);
     const apiKey = settings[keyName];
 
     // Check if encryption is enabled
     if (settings.encryptionEnabled) {
-      // If key is encrypted (object with iv and data), we can't decrypt in content script
+      // If key is encrypted (object with iv and data), we can't decrypt here without password
       if (apiKey && typeof apiKey === "object" && apiKey.encrypted) {
-        console.warn("⚠️ API key is encrypted - cannot decrypt in content script");
-        throw new Error(CONFIG.MESSAGES.ERROR_ENCRYPTION_ENABLED);
+        console.warn(`⚠️ ${keyName} is encrypted - waiting for unlock via popup`);
+        // We throw a specific error that the UI can catch to prompt for unlock
+        throw new Error("ENCRYPTION_LOCKED");
       }
     }
 
@@ -195,6 +212,10 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
 if (typeof window !== "undefined") {
   window.settingsService = settingsService;
   window.SettingsService = SettingsService;
+}
+if (typeof self !== "undefined") {
+  self.settingsService = settingsService;
+  self.SettingsService = SettingsService;
 }
 
 // CommonJS export for Node.js/Jest testing
