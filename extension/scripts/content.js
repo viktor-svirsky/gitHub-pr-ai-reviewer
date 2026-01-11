@@ -138,7 +138,7 @@
       let msg = error.message;
       if (msg === "ENCRYPTION_LOCKED" || msg.includes("auth_required")) {
         msg =
-          "🔐 Extension is locked. Please open the extension settings (popup) and enter your master password to unlock API keys.";
+          "Authentication required. Please check extension settings.";
       }
       showError(msg);
     } finally {

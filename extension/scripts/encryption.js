@@ -5,7 +5,6 @@
 
 class SecureStorage {
   constructor() {
-    this.LEGACY_SALT = "github-pr-ai-reviewer-v1-salt-2024";
     this.SALT_KEY = "encryptionSalt";
     this.ITERATIONS = 600000;
     this.masterKeyCache = null;
@@ -13,6 +12,11 @@ class SecureStorage {
 
   /**
    * Get or initialize the encryption salt
+   * 
+   * Note: The salt is stored in chrome.storage.local to persist across browser sessions.
+   * While accessible to the extension context, it is public non-secret data used to
+   * prevent rainbow table attacks. The security relies on the master password entropy
+   * and the high PBKDF2 iteration count (600,000).
    */
   async getOrInitSalt() {
     const result = await chrome.storage.local.get([this.SALT_KEY]);
@@ -20,14 +24,17 @@ class SecureStorage {
       return result[this.SALT_KEY];
     }
 
-    // Check for existing encrypted data to determine if we need legacy salt
+    // Check for existing encrypted data to determine if we are in a broken state
     const allData = await chrome.storage.local.get(null);
     const hasEncryptedData = Object.values(allData).some((val) => val && val.encrypted);
 
     let salt;
     if (hasEncryptedData) {
-      // Use legacy salt for backward compatibility
-      salt = this.LEGACY_SALT;
+      // CRITICAL: We found encrypted data but no salt. This implies a corrupted state 
+      // or an unauthorized modification. We cannot safely decrypt without the correct salt.
+      // We throw an error to prevent data loss or security issues. User may need to reset.
+      console.error("Encrypted data found but salt is missing.");
+      throw new Error("Security Error: Encryption salt missing for existing data. Reset required.");
     } else {
       // Generate new random salt
       const randomValues = new Uint8Array(16);

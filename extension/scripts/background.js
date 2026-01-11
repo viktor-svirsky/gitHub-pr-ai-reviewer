@@ -234,7 +234,7 @@ async function checkSessionTimeout() {
         const timeout = 30 * 60 * 1000; // 30 minutes
         
         if (now - lastActivity > timeout) {
-          console.log("🔒 Session timed out, clearing decrypted keys");
+          // Clears decrypted keys from session
           await chrome.storage.session.remove([
             "decrypted_openrouterApiKey", 
             "decrypted_githubToken",

@@ -28,6 +28,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   // State
   let isEncrypted = false;
   let isUnlocked = false;
+  let isToggling = false;
 
   // Initialize
   await init();
@@ -58,6 +59,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Encryption Toggle
     enableEncryptionCheckbox.addEventListener("change", async (e) => {
       // Race condition prevention
+      if (isToggling) {
+        e.target.checked = !e.target.checked; // Revert
+        return;
+      }
+
+      isToggling = true;
       enableEncryptionCheckbox.disabled = true;
 
       try {
@@ -68,7 +75,6 @@ document.addEventListener("DOMContentLoaded", async () => {
           if (!isUnlocked && isEncrypted) {
             alert("Please unlock with your master password before disabling encryption.");
             e.target.checked = true;
-            enableEncryptionCheckbox.disabled = false;
             return;
           }
 
@@ -77,15 +83,31 @@ document.addEventListener("DOMContentLoaded", async () => {
             !confirm("Disabling encryption will store your API keys in plain text. Are you sure?")
           ) {
             e.target.checked = true;
-            enableEncryptionCheckbox.disabled = false;
             return;
           }
 
           // User confirmed and is unlocked.
-          // The actual decryption and saving as plain text happens on "Save Settings".
-          // We update state here to reflect pending change.
-          isEncrypted = false;
-          toggleEncryptionUI(false);
+          // Immediate Action: Decrypt and save as plain text
+          try {
+            // We can get keys from input values as they should be populated if unlocked
+            const openrouterKey = openrouterApiKeyInput.value.trim();
+            const githubToken = githubTokenInput.value.trim();
+
+            await secureStorage.disableEncryption();
+            await chrome.storage.local.set({
+              openrouterApiKey: openrouterKey,
+              githubToken: githubToken,
+              encryptionEnabled: false,
+            });
+
+            isEncrypted = false;
+            toggleEncryptionUI(false);
+            showStatus("Encryption disabled. Keys stored in plain text.", "success");
+          } catch (err) {
+            console.error("Failed to disable encryption:", err);
+            showStatus("Failed to disable encryption", "error");
+            e.target.checked = true; // Revert
+          }
         } else {
           // Enabling encryption
           isEncrypted = true;
@@ -93,6 +115,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
       } finally {
         enableEncryptionCheckbox.disabled = false;
+        isToggling = false;
       }
     });
 
@@ -182,7 +205,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   async function handleUnlock() {
-    const password = masterPasswordInput.value;
+    const password = masterPasswordInput.value.trim();
     if (!password) {
       showStatus("Please enter master password", "error");
       return;
@@ -287,7 +310,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   async function saveSettings() {
     const openrouterKey = openrouterApiKeyInput.value.trim();
     const githubToken = githubTokenInput.value.trim();
-    const password = masterPasswordInput.value;
+    const password = masterPasswordInput.value.trim();
 
     if (!openrouterKey) {
       showStatus("OpenRouter API key is required", "error");
