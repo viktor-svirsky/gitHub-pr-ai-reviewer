@@ -12,6 +12,10 @@ console.log("GitHub PR AI Reviewer background service worker loaded");
 chrome.runtime.onInstalled.addListener((details) => {
   console.log("Extension installed:", details.reason);
 
+  if (!chrome.storage.session) {
+    console.warn("⚠️ chrome.storage.session is not available. Encrypted mode may not function correctly in background.");
+  }
+
   if (details.reason === "install") {
     // Set default values on first install
     chrome.storage.local.set({

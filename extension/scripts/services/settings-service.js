@@ -101,14 +101,24 @@ class SettingsService {
     const settings = await this.get([keyName, "encryptionEnabled"], false);
     const apiKey = settings[keyName];
 
-    // Check if encryption is enabled
+    // Check consistency
+    const isKeyEncrypted = apiKey && typeof apiKey === "object" && apiKey.encrypted;
+
+    // Case 1: Encryption enabled in settings
     if (settings.encryptionEnabled) {
-      // If key is encrypted (object with iv and data), we can't decrypt here without password
-      if (apiKey && typeof apiKey === "object" && apiKey.encrypted) {
+      if (isKeyEncrypted) {
         console.warn(`⚠️ ${keyName} is encrypted - waiting for unlock via popup`);
-        // We throw a specific error that the UI can catch to prompt for unlock
         throw new Error("ENCRYPTION_LOCKED");
       }
+      // If enabled but key is plain text, we return it (fallback/transition)
+      // or we could warn. For now, we allow it but it's technically a security risk
+      // if user thinks it is encrypted.
+    }
+
+    // Case 2: Encryption disabled but key is encrypted (Inconsistent state)
+    if (!settings.encryptionEnabled && isKeyEncrypted) {
+      console.error(`❌ Consistency Error: Encryption disabled but ${keyName} is encrypted`);
+      throw new Error("ENCRYPTION_STATE_MISMATCH");
     }
 
     return apiKey || null;

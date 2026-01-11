@@ -29,6 +29,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   let isEncrypted = false;
   let isUnlocked = false;
   let isToggling = false;
+  const STATUS_TIMEOUT = 3000;
 
   // Initialize
   await init();
@@ -215,10 +216,14 @@ document.addEventListener("DOMContentLoaded", async () => {
       unlockBtn.textContent = "Unlocking...";
       unlockBtn.disabled = true;
 
+      // Brute force protection: simple delay
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
       // verifyMasterPassword tries to decrypt stored keys
       const isValid = await secureStorage.verifyMasterPassword(password);
 
       if (isValid) {
+        // Only set unlocked state on success
         isUnlocked = true;
         unlockUI();
         await loadSettings(password);
@@ -398,14 +403,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     statusMessage.textContent = msg;
     statusMessage.className = `status-message ${type}`;
     statusMessage.classList.remove("hidden");
-    setTimeout(() => statusMessage.classList.add("hidden"), 5000);
+    setTimeout(() => statusMessage.classList.add("hidden"), STATUS_TIMEOUT);
   }
 
   // --- Model Fetching Logic (Simplified from original) ---
   async function fetchAndPopulateModels(apiKey, modelToRestore) {
-    // Reuse existing logic or simplified version
-    // For brevity, I'll trust the existing logic if I didn't overwrite it, but I did overwrite the file.
-    // So I need to reimplement fetchAndPopulateModels
     try {
       const response = await fetch("https://openrouter.ai/api/v1/models", {
         headers: { Authorization: `Bearer ${apiKey}` },

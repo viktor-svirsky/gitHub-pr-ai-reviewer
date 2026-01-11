@@ -48,7 +48,9 @@ class SecureStorage {
   }
 
   /**
-   * Derive encryption key from master password
+   * Derive encryption key from master password using PBKDF2
+   * @param {string} password - The master password
+   * @returns {Promise<CryptoKey>} The derived AES-GCM key
    */
   async deriveKey(password) {
     const saltData = await this.getOrInitSalt();
@@ -81,7 +83,10 @@ class SecureStorage {
   }
 
   /**
-   * Encrypt text with given key
+   * Encrypt text with given key using AES-GCM
+   * @param {string} text - The plaintext to encrypt
+   * @param {CryptoKey} key - The encryption key
+   * @returns {Promise<{iv: number[], data: number[]}|null>} Object containing IV and encrypted data arrays
    */
   async encrypt(text, key) {
     if (!text) return null;
@@ -99,6 +104,10 @@ class SecureStorage {
 
   /**
    * Decrypt encrypted object with given key
+   * @param {{iv: number[], data: number[]}} encrypted - The encrypted object (iv and data)
+   * @param {CryptoKey} key - The decryption key
+   * @returns {Promise<string|null>} The decrypted plaintext
+   * @throws {Error} If decryption fails (invalid password or data)
    */
   async decrypt(encrypted, key) {
     if (!encrypted || !encrypted.iv || !encrypted.data) {
@@ -123,6 +132,9 @@ class SecureStorage {
 
   /**
    * Save encrypted value to chrome.storage.local
+   * @param {string} keyName - The storage key
+   * @param {string} value - The value to encrypt and store
+   * @param {string} masterPassword - The master password
    */
   async saveSecure(keyName, value, masterPassword) {
     if (!value) {
@@ -144,6 +156,9 @@ class SecureStorage {
 
   /**
    * Get and decrypt value from chrome.storage.local
+   * @param {string} keyName - The storage key
+   * @param {string} masterPassword - The master password
+   * @returns {Promise<string|null>} The decrypted value or null
    */
   async getSecure(keyName, masterPassword) {
     const result = await chrome.storage.local.get([keyName]);
