@@ -88,6 +88,8 @@ class SettingsService {
         const sessionData = await chrome.storage.session.get([sessionKey]);
         if (sessionData[sessionKey]) {
           console.log(`🔑 Retrieved ${keyName} from session storage`);
+          // Refresh session activity
+          chrome.storage.session.set({ lastActivity: Date.now() });
           return sessionData[sessionKey];
         }
       } catch (error) {

@@ -56,22 +56,43 @@ document.addEventListener("DOMContentLoaded", async () => {
     setupPasswordToggle(toggleGithubTokenBtn, githubTokenInput);
 
     // Encryption Toggle
-    enableEncryptionCheckbox.addEventListener("change", (e) => {
-      isEncrypted = e.target.checked;
-      toggleEncryptionUI(isEncrypted);
-      if (!isEncrypted) {
-        // If disabling encryption, warn user
-        if (
-          !confirm("Disabling encryption will store your API keys in plain text. Are you sure?")
-        ) {
-          e.target.checked = true;
+    enableEncryptionCheckbox.addEventListener("change", async (e) => {
+      // Race condition prevention
+      enableEncryptionCheckbox.disabled = true;
+
+      try {
+        const wantsEncryption = e.target.checked;
+
+        if (!wantsEncryption) {
+          // Attempting to disable encryption
+          if (!isUnlocked && isEncrypted) {
+            alert("Please unlock with your master password before disabling encryption.");
+            e.target.checked = true;
+            enableEncryptionCheckbox.disabled = false;
+            return;
+          }
+
+          // Warn user
+          if (
+            !confirm("Disabling encryption will store your API keys in plain text. Are you sure?")
+          ) {
+            e.target.checked = true;
+            enableEncryptionCheckbox.disabled = false;
+            return;
+          }
+
+          // User confirmed and is unlocked.
+          // The actual decryption and saving as plain text happens on "Save Settings".
+          // We update state here to reflect pending change.
+          isEncrypted = false;
+          toggleEncryptionUI(false);
+        } else {
+          // Enabling encryption
           isEncrypted = true;
           toggleEncryptionUI(true);
-        } else {
-          // If we were locked, we need to reset/clear data or ask for unlock first?
-          // For simplicity, if they disable it, we just mark state.
-          // Actual disable happens on Save.
         }
+      } finally {
+        enableEncryptionCheckbox.disabled = false;
       }
     });
 
@@ -178,14 +199,18 @@ document.addEventListener("DOMContentLoaded", async () => {
         isUnlocked = true;
         unlockUI();
         await loadSettings(password);
+        // Security: Clear password from input immediately after use
+        masterPasswordInput.value = "";
         showStatus("Unlocked successfully", "success");
       } else {
         showStatus("Incorrect password", "error");
+        // Ensure UI is ready for retry
+        unlockBtn.textContent = "Unlock";
+        unlockBtn.disabled = false;
       }
     } catch (error) {
       console.error(error);
       showStatus("Unlock failed", "error");
-    } finally {
       unlockBtn.textContent = "Unlock";
       unlockBtn.disabled = false;
     }
@@ -233,6 +258,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           await chrome.storage.session.set({
             decrypted_openrouterApiKey: openrouterKey,
             decrypted_githubToken: githubToken,
+            lastActivity: Date.now(),
           });
         }
       }
@@ -300,6 +326,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           await chrome.storage.session.set({
             decrypted_openrouterApiKey: openrouterKey,
             decrypted_githubToken: githubToken,
+            lastActivity: Date.now(),
           });
         }
       } else {

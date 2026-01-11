@@ -7,7 +7,7 @@ class SecureStorage {
   constructor() {
     this.LEGACY_SALT = "github-pr-ai-reviewer-v1-salt-2024";
     this.SALT_KEY = "encryptionSalt";
-    this.ITERATIONS = 100000;
+    this.ITERATIONS = 600000;
     this.masterKeyCache = null;
   }
 

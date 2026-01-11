@@ -18,7 +18,7 @@ describe("SecureStorage", () => {
     it("should initialize with correct defaults", () => {
       expect(storage.LEGACY_SALT).toBeDefined();
       expect(storage.SALT_KEY).toBe("encryptionSalt");
-      expect(storage.ITERATIONS).toBe(100000);
+      expect(storage.ITERATIONS).toBe(600000);
       expect(storage.masterKeyCache).toBe(null);
     });
   });
@@ -59,7 +59,7 @@ describe("SecureStorage", () => {
       expect(crypto.subtle.deriveKey).toHaveBeenCalledWith(
         expect.objectContaining({
           name: "PBKDF2",
-          iterations: 100000,
+          iterations: 600000,
           hash: "SHA-256",
         }),
         expect.any(Object),

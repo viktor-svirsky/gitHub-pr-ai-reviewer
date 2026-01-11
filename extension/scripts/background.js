@@ -210,10 +210,40 @@ chrome.action.onClicked.addListener((tab) => {
 
 // Periodic cleanup or maintenance tasks
 chrome.alarms.create("cleanup", { periodInMinutes: 60 });
+// Security: Check for session timeout every 5 minutes
+chrome.alarms.create("sessionCheck", { periodInMinutes: 5 });
 
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === "cleanup") {
     console.log("Running periodic cleanup");
     // Could clean up old cached reviews, etc.
   }
+  
+  if (alarm.name === "sessionCheck") {
+    checkSessionTimeout();
+  }
 });
+
+async function checkSessionTimeout() {
+  try {
+    if (chrome.storage.session) {
+      const data = await chrome.storage.session.get(["lastActivity", "decrypted_openrouterApiKey"]);
+      if (data.decrypted_openrouterApiKey) {
+        const lastActivity = data.lastActivity || 0;
+        const now = Date.now();
+        const timeout = 30 * 60 * 1000; // 30 minutes
+        
+        if (now - lastActivity > timeout) {
+          console.log("🔒 Session timed out, clearing decrypted keys");
+          await chrome.storage.session.remove([
+            "decrypted_openrouterApiKey", 
+            "decrypted_githubToken",
+            "lastActivity"
+          ]);
+        }
+      }
+    }
+  } catch (err) {
+    console.error("Session check failed", err);
+  }
+}
