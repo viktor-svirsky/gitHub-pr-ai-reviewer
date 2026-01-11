@@ -213,19 +213,27 @@ function truncateText(text, maxLength, suffix = "...") {
   return text.substring(0, maxLength) + suffix;
 }
 
+// Helper object for global/export use
+const helpers = {
+  debounce,
+  throttle,
+  escapeHtml,
+  waitForElement,
+  retryWithBackoff,
+  sleep,
+  isPRPage,
+  formatRelativeTime,
+  SimpleCache,
+  safeJsonParse,
+  truncateText,
+};
+
 // Make utilities available globally
 if (typeof window !== "undefined") {
-  window.helpers = {
-    debounce,
-    throttle,
-    escapeHtml,
-    waitForElement,
-    retryWithBackoff,
-    sleep,
-    isPRPage,
-    formatRelativeTime,
-    SimpleCache,
-    safeJsonParse,
-    truncateText,
-  };
+  window.helpers = helpers;
+}
+
+// CommonJS export for Node.js/Jest testing
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = { helpers, SimpleCache };
 }

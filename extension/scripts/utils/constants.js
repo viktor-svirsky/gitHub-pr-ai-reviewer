@@ -82,3 +82,8 @@ const CONFIG = {
 if (typeof window !== "undefined") {
   window.CONFIG = CONFIG;
 }
+
+// CommonJS export for Node.js/Jest testing
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = { CONFIG };
+}

@@ -194,4 +194,10 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
 // Make available globally
 if (typeof window !== "undefined") {
   window.settingsService = settingsService;
+  window.SettingsService = SettingsService;
+}
+
+// CommonJS export for Node.js/Jest testing
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = { SettingsService, settingsService };
 }

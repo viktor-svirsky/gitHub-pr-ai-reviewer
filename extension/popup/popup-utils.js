@@ -240,3 +240,8 @@ const PopupUtils = {
 if (typeof window !== "undefined") {
   window.PopupUtils = PopupUtils;
 }
+
+// CommonJS export for Node.js/Jest testing
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = { PopupUtils };
+}

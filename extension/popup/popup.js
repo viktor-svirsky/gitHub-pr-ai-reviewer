@@ -126,7 +126,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     resetBtn.addEventListener("click", async () => {
       if (
         confirm(
-          "Are you sure you want to reset all settings to defaults? This will clear all API keys."
+          "Are you sure you want to reset all settings to defaults? This will clear all API keys.",
         )
       ) {
         try {
@@ -146,7 +146,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     clearCacheBtn.addEventListener("click", async () => {
       if (
         confirm(
-          "Are you sure you want to clear all cached PR reviews? This will remove all saved reviews from previous analyses."
+          "Are you sure you want to clear all cached PR reviews? This will remove all saved reviews from previous analyses.",
         )
       ) {
         try {
@@ -290,8 +290,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (modelCache && modelCache.models && Date.now() < modelCache.expiry) {
         console.log(
           `✅ Using cached models (age: ${Math.round(
-            (Date.now() - modelCache.timestamp) / 1000 / 60
-          )} minutes)`
+            (Date.now() - modelCache.timestamp) / 1000 / 60,
+          )} minutes)`,
         );
         allModels = modelCache.models;
       } else {
@@ -353,7 +353,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         // Filter 2: Require minimum context length (8K tokens minimum for code reviews)
         if (!model.context_length || model.context_length < 8000) {
           console.log(
-            `❌ Filtered out ${model.id}: insufficient context length (${model.context_length})`
+            `❌ Filtered out ${model.id}: insufficient context length (${model.context_length})`,
           );
           return false;
         }
@@ -380,7 +380,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             (keyword) =>
               modelName.includes(keyword) ||
               modelId.includes(keyword) ||
-              description.includes(keyword)
+              description.includes(keyword),
           )
         ) {
           console.log(`❌ Filtered out ${model.id}: contains NSFW/adult keywords`);
@@ -407,7 +407,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (
           !isPreviewFromMajor &&
           experimentalKeywords.some(
-            (keyword) => modelName.includes(keyword) || modelId.includes(keyword)
+            (keyword) => modelName.includes(keyword) || modelId.includes(keyword),
           )
         ) {
           console.log(`❌ Filtered out ${model.id}: experimental/test model`);
@@ -452,7 +452,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       });
 
       console.log(
-        `✅ Filtered to ${availableModels.length} suitable models (removed ${allModels.length - availableModels.length})`
+        `✅ Filtered to ${availableModels.length} suitable models (removed ${allModels.length - availableModels.length})`,
       );
 
       if (availableModels.length === 0) {
@@ -491,7 +491,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             return acc;
           }, {});
           console.log(
-            `✅ Fetched benchmark scores for ${Object.keys(benchmarkScores).length} models`
+            `✅ Fetched benchmark scores for ${Object.keys(benchmarkScores).length} models`,
           );
           console.log("📋 Sample benchmark model IDs:", Object.keys(benchmarkScores).slice(0, 10));
           console.log("📊 Sample score data:", Object.entries(benchmarkScores).slice(0, 3));
@@ -531,7 +531,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             name: m.name,
             stripped: m.id.replace(/^[^/]+\//, ""),
           })),
-        }))
+        })),
       );
 
       // Sort providers alphabetically
@@ -618,7 +618,7 @@ document.addEventListener("DOMContentLoaded", async () => {
               ) {
                 scores = benchmarkScore;
                 console.log(
-                  `Fuzzy matched ${model.id} to ${benchmarkId} via normalized comparison`
+                  `Fuzzy matched ${model.id} to ${benchmarkId} via normalized comparison`,
                 );
                 break;
               }
@@ -710,10 +710,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       // Restore previous selection if it exists
       const optionExists = Array.from(aiModelSelect.options).some(
-        (opt) => opt.value === valueToRestore
+        (opt) => opt.value === valueToRestore,
       );
       console.log(
-        `🔍 Checking if saved model exists in dropdown: ${valueToRestore} - ${optionExists ? "YES" : "NO"}`
+        `🔍 Checking if saved model exists in dropdown: ${valueToRestore} - ${optionExists ? "YES" : "NO"}`,
       );
 
       if (valueToRestore && optionExists) {
@@ -901,6 +901,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   };
 
   console.log(
-    "💡 Debug function available: Run debugDropdown() in console to export dropdown data"
+    "💡 Debug function available: Run debugDropdown() in console to export dropdown data",
   );
 });
