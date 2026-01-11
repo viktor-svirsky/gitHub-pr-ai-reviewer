@@ -41,10 +41,10 @@ function throttle(func, limit) {
  * @returns {string} Escaped text
  */
 function escapeHtml(text) {
-  if (!text) {
-    return text;
+  if (text === null || text === undefined) {
+    return "";
   }
-  return text
+  return String(text)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")

@@ -20,8 +20,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   const enableEncryptionCheckbox = document.getElementById("enable-encryption");
   const encryptionControls = document.getElementById("encryption-controls");
   const masterPasswordInput = document.getElementById("master-password");
+  const confirmMasterPasswordInput = document.getElementById("confirm-master-password");
+  const confirmPasswordContainer = document.getElementById("confirm-password-container");
   const unlockBtn = document.getElementById("unlock-btn");
   const toggleMasterPasswordBtn = document.getElementById("toggle-master-password");
+  const toggleConfirmPasswordBtn = document.getElementById("toggle-confirm-password");
   const toggleOpenrouterKeyBtn = document.getElementById("toggle-openrouter-key");
   const toggleGithubTokenBtn = document.getElementById("toggle-github-token");
 
@@ -54,6 +57,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   function setupEventListeners() {
     // Toggle Password Visibility
     setupPasswordToggle(toggleMasterPasswordBtn, masterPasswordInput);
+    setupPasswordToggle(toggleConfirmPasswordBtn, confirmMasterPasswordInput);
     setupPasswordToggle(toggleOpenrouterKeyBtn, openrouterApiKeyInput);
     setupPasswordToggle(toggleGithubTokenBtn, githubTokenInput);
 
@@ -90,6 +94,11 @@ document.addEventListener("DOMContentLoaded", async () => {
           // User confirmed and is unlocked.
           // Immediate Action: Decrypt and save as plain text
           try {
+            // Security: Strict check for unlocked state before reading inputs
+            if (!isUnlocked) {
+               throw new Error("UI must be unlocked to disable encryption safely.");
+            }
+
             // We can get keys from input values as they should be populated if unlocked
             const openrouterKey = openrouterApiKeyInput.value.trim();
             const githubToken = githubTokenInput.value.trim();
@@ -173,9 +182,19 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (enabled) {
       encryptionControls.classList.remove("hidden");
       masterPasswordInput.required = true;
+      // Show confirm password only if we're setting up (not locked)
+      if (!isUnlocked) {
+         confirmPasswordContainer.classList.remove("hidden");
+         confirmMasterPasswordInput.required = true;
+      } else {
+         confirmPasswordContainer.classList.add("hidden");
+         confirmMasterPasswordInput.required = false;
+      }
     } else {
       encryptionControls.classList.add("hidden");
+      confirmPasswordContainer.classList.add("hidden");
       masterPasswordInput.required = false;
+      confirmMasterPasswordInput.required = false;
       unlockUI(); // Ensure UI is usable if encryption is off
     }
   }
@@ -200,6 +219,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     aiModelSelect.disabled = false;
     saveBtn.disabled = false;
     unlockBtn.classList.add("hidden");
+    confirmPasswordContainer.classList.add("hidden");
 
     openrouterApiKeyInput.placeholder = "sk-or-v1-...";
     githubTokenInput.placeholder = "ghp_...";
@@ -316,20 +336,28 @@ document.addEventListener("DOMContentLoaded", async () => {
     const openrouterKey = openrouterApiKeyInput.value.trim();
     const githubToken = githubTokenInput.value.trim();
     const password = masterPasswordInput.value.trim();
+    const confirmPassword = confirmMasterPasswordInput.value.trim();
 
     if (!openrouterKey) {
       showStatus("OpenRouter API key is required", "error");
       return;
     }
 
-    if (isEncrypted && !password && !isUnlocked) {
-      showStatus("Master password is required for encryption", "error");
-      return;
-    }
+    if (isEncrypted && !isUnlocked) {
+      if (!password) {
+        showStatus("Master password is required for encryption", "error");
+        return;
+      }
 
-    if (isEncrypted && password.length < 8) {
-      showStatus("Password must be at least 8 characters", "error");
-      return;
+      if (password.length < 8) {
+        showStatus("Password must be at least 8 characters", "error");
+        return;
+      }
+
+      if (password !== confirmPassword) {
+        showStatus("Passwords do not match", "error");
+        return;
+      }
     }
 
     try {
@@ -345,6 +373,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       });
 
       if (isEncrypted) {
+        // If we are enabling encryption for the first time or updating password
+        // we should migrate existing keys if they were plain
+        const currentPassword = isUnlocked ? (await getCachedPassword()) || password : password;
+        
         // Save Encrypted
         await secureStorage.saveSecure("openrouterApiKey", openrouterKey, password);
         await secureStorage.saveSecure("githubToken", githubToken, password);

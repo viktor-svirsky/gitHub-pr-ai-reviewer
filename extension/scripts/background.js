@@ -14,6 +14,12 @@ chrome.runtime.onInstalled.addListener((details) => {
 
   if (!chrome.storage.session) {
     console.warn("⚠️ chrome.storage.session is not available. Encrypted mode may not function correctly in background.");
+  } else {
+    // Security: Ensure session storage is only accessible in trusted contexts (background/popup)
+    // and not content scripts.
+    chrome.storage.session.setAccessLevel({ accessLevel: "TRUSTED_CONTEXTS" }).catch(err => {
+      console.warn("Failed to set session access level:", err);
+    });
   }
 
   if (details.reason === "install") {
