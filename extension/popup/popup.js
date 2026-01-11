@@ -84,13 +84,16 @@ document.addEventListener("DOMContentLoaded", async () => {
           }
 
           // Security: Re-authenticate before disabling
-          const reauthPassword = prompt("Please enter your master password to confirm disabling encryption:");
+          let reauthPassword = prompt("Please enter your master password to confirm disabling encryption:");
           if (reauthPassword === null) {
             e.target.checked = true;
             return;
           }
 
           const isValid = await secureStorage.verifyMasterPassword(reauthPassword);
+          // Security: Clear password from memory immediately
+          reauthPassword = null;
+          
           if (!isValid) {
             alert("Incorrect password. Cannot disable encryption.");
             e.target.checked = true;
@@ -119,9 +122,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
             await secureStorage.disableEncryption();
 
-            // Security: Explicitly remove any encrypted versions before setting plain text
-            await chrome.storage.local.remove(["openrouterApiKey", "githubToken"]);
-
+            // Security: Use a single set operation to avoid race conditions
+            // This will overwrite any existing encrypted objects with plain text strings
             await chrome.storage.local.set({
               openrouterApiKey: openrouterKey,
               githubToken: githubToken,

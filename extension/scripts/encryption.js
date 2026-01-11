@@ -36,7 +36,7 @@ class SecureStorage {
       console.error("Encrypted data found but salt is missing.");
       throw new Error("Security Error: Encryption salt missing for existing data. Reset required.");
     } else {
-      // Generate new random salt
+      // Generate new random salt using cryptographically secure random values
       const randomValues = new Uint8Array(16);
       crypto.getRandomValues(randomValues);
       // Store as array for JSON compatibility
