@@ -18,7 +18,7 @@ describe("SecureStorage", () => {
     it("should initialize with correct defaults", () => {
       expect(storage.SALT_KEY).toBe("encryptionSalt");
       expect(storage.ITERATIONS).toBe(600000);
-      expect(storage.masterKeyCache).toBe(null);
+      expect(storage.keyCache).toBe(null);
     });
   });
 
@@ -328,10 +328,10 @@ describe("SecureStorage", () => {
     });
 
     it("should clear master key cache", async () => {
-      storage.masterKeyCache = { test: "data" };
+      storage.keyCache = { test: "data" };
       await storage.disableEncryption();
 
-      expect(storage.masterKeyCache).toBe(null);
+      expect(storage.keyCache).toBe(null);
     });
 
     it("should work when encryption is not enabled", async () => {
@@ -450,11 +450,11 @@ describe("SecureStorage", () => {
     });
 
     it("should clear master key cache", async () => {
-      storage.masterKeyCache = { test: "data" };
+      storage.keyCache = { test: "data" };
 
       await storage.clearAll();
 
-      expect(storage.masterKeyCache).toBe(null);
+      expect(storage.keyCache).toBe(null);
     });
 
     it("should handle empty storage", async () => {

@@ -75,13 +75,16 @@
                   <span class="label-text">Master Password</span>
                   <span class="label-hint">Required to decrypt keys (min 8 chars)</span>
                 </label>
+                <div class="warning-text" style="color: #cf222e; font-size: 11px; margin-bottom: 4px;">
+                  ⚠️ There is no password recovery. If you lose this password, your API keys will be lost.
+                </div>
                 <div style="display: flex; gap: 8px">
                   <div style="position: relative; flex: 1">
                     <input
                       type="password"
                       id="master-password"
                       placeholder="Enter master password"
-                      autocomplete="new-password"
+                      autocomplete="current-password"
                     />
                     <button
                       type="button"

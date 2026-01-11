@@ -7,7 +7,7 @@ class SecureStorage {
   constructor() {
     this.SALT_KEY = "encryptionSalt";
     this.ITERATIONS = 600000;
-    this.masterKeyCache = null;
+    this.keyCache = null;
   }
 
   /**
@@ -53,6 +53,10 @@ class SecureStorage {
    * @returns {Promise<CryptoKey>} The derived AES-GCM key
    */
   async deriveKey(password) {
+    if (this.keyCache && !password) {
+      return this.keyCache;
+    }
+
     const saltData = await this.getOrInitSalt();
     const enc = new TextEncoder();
 
@@ -68,7 +72,7 @@ class SecureStorage {
       ["deriveBits", "deriveKey"]
     );
 
-    return crypto.subtle.deriveKey(
+    const key = await crypto.subtle.deriveKey(
       {
         name: "PBKDF2",
         salt: saltBuffer,
@@ -80,13 +84,23 @@ class SecureStorage {
       false,
       ["encrypt", "decrypt"]
     );
+
+    this.keyCache = key;
+    return key;
+  }
+
+  /**
+   * Clear the in-memory key cache
+   */
+  clearKeyCache() {
+    this.keyCache = null;
   }
 
   /**
    * Encrypt text with given key using AES-GCM
    * @param {string} text - The plaintext to encrypt
    * @param {CryptoKey} key - The encryption key
-   * @returns {Promise<{iv: number[], data: number[]}|null>} Object containing IV and encrypted data arrays
+   * @returns {Promise<{iv: number[], data: number[], version: number}|null>} Object containing IV, encrypted data, and version
    */
   async encrypt(text, key) {
     if (!text) return null;
@@ -99,12 +113,13 @@ class SecureStorage {
     return {
       iv: Array.from(iv),
       data: Array.from(new Uint8Array(encrypted)),
+      version: 1, // Current encryption version
     };
   }
 
   /**
    * Decrypt encrypted object with given key
-   * @param {{iv: number[], data: number[]}} encrypted - The encrypted object (iv and data)
+   * @param {{iv: number[], data: number[], version: number}} encrypted - The encrypted object
    * @param {CryptoKey} key - The decryption key
    * @returns {Promise<string|null>} The decrypted plaintext
    * @throws {Error} If decryption fails (invalid password or data)
@@ -112,6 +127,11 @@ class SecureStorage {
   async decrypt(encrypted, key) {
     if (!encrypted || !encrypted.iv || !encrypted.data) {
       return null;
+    }
+
+    // Check version if necessary (currently only version 1 supported)
+    if (encrypted.version && encrypted.version > 1) {
+      console.warn("Unsupported encryption version:", encrypted.version);
     }
 
     const dec = new TextDecoder();
@@ -208,7 +228,7 @@ class SecureStorage {
     await chrome.storage.local.set({
       encryptionEnabled: false,
     });
-    this.masterKeyCache = null;
+    this.keyCache = null;
   }
 
   /**
@@ -264,7 +284,7 @@ class SecureStorage {
    */
   async clearAll() {
     await chrome.storage.local.clear();
-    this.masterKeyCache = null;
+    this.keyCache = null;
   }
 }
 

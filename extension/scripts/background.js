@@ -223,6 +223,13 @@ chrome.alarms.create("cleanup", { periodInMinutes: 60 });
 // Security: Check for session timeout every 5 minutes
 chrome.alarms.create("sessionCheck", { periodInMinutes: 5 });
 
+// Security: Clear session storage when the background worker is suspended
+chrome.runtime.onSuspend.addListener(() => {
+  if (chrome.storage.session) {
+    chrome.storage.session.clear();
+  }
+});
+
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === "cleanup") {
     console.log("Running periodic cleanup");

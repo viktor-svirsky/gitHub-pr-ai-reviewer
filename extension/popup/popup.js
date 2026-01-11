@@ -83,6 +83,20 @@ document.addEventListener("DOMContentLoaded", async () => {
             return;
           }
 
+          // Security: Re-authenticate before disabling
+          const reauthPassword = prompt("Please enter your master password to confirm disabling encryption:");
+          if (reauthPassword === null) {
+            e.target.checked = true;
+            return;
+          }
+
+          const isValid = await secureStorage.verifyMasterPassword(reauthPassword);
+          if (!isValid) {
+            alert("Incorrect password. Cannot disable encryption.");
+            e.target.checked = true;
+            return;
+          }
+
           // Warn user
           if (
             !confirm("Disabling encryption will store your API keys in plain text. Are you sure?")
@@ -96,7 +110,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           try {
             // Security: Strict check for unlocked state before reading inputs
             if (!isUnlocked) {
-               throw new Error("UI must be unlocked to disable encryption safely.");
+              throw new Error("UI must be unlocked to disable encryption safely.");
             }
 
             // We can get keys from input values as they should be populated if unlocked
@@ -104,6 +118,10 @@ document.addEventListener("DOMContentLoaded", async () => {
             const githubToken = githubTokenInput.value.trim();
 
             await secureStorage.disableEncryption();
+
+            // Security: Explicitly remove any encrypted versions before setting plain text
+            await chrome.storage.local.remove(["openrouterApiKey", "githubToken"]);
+
             await chrome.storage.local.set({
               openrouterApiKey: openrouterKey,
               githubToken: githubToken,
@@ -148,6 +166,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     resetBtn.addEventListener("click", async () => {
       if (confirm("Reset all settings and clear API keys?")) {
         await secureStorage.clearAll();
+        // Clear in-memory cache too
+        if (secureStorage.clearKeyCache) {
+          secureStorage.clearKeyCache();
+        }
         // Also clear session storage
         if (chrome.storage.session) {
           await chrome.storage.session.clear();
@@ -184,11 +206,11 @@ document.addEventListener("DOMContentLoaded", async () => {
       masterPasswordInput.required = true;
       // Show confirm password only if we're setting up (not locked)
       if (!isUnlocked) {
-         confirmPasswordContainer.classList.remove("hidden");
-         confirmMasterPasswordInput.required = true;
+        confirmPasswordContainer.classList.remove("hidden");
+        confirmMasterPasswordInput.required = true;
       } else {
-         confirmPasswordContainer.classList.add("hidden");
-         confirmMasterPasswordInput.required = false;
+        confirmPasswordContainer.classList.add("hidden");
+        confirmMasterPasswordInput.required = false;
       }
     } else {
       encryptionControls.classList.add("hidden");
@@ -375,8 +397,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (isEncrypted) {
         // If we are enabling encryption for the first time or updating password
         // we should migrate existing keys if they were plain
-        const currentPassword = isUnlocked ? (await getCachedPassword()) || password : password;
-        
+
+        // If password is empty but we are unlocked, SecureStorage will use keyCache
+        // If we are NOT unlocked, password is required (checked above)
+
         // Save Encrypted
         await secureStorage.saveSecure("openrouterApiKey", openrouterKey, password);
         await secureStorage.saveSecure("githubToken", githubToken, password);
